@@ -1,18 +1,11 @@
 package de.dheinrich
 
-import scala.io.Source
+import fastparse.NoWhitespace._
 import fastparse._
-import NoWhitespace._
-import de.dheinrich.Parser.Claim
 
-object Day3 extends App {
+object Day3 extends DayApp(3) {
 
-  val claims = Source
-    .fromResource("input.txt")
-    .getLines()
-    .toIndexedSeq
-
-  val parsed = claims.flatMap(Parser.parseClaim)
+  val parsed = parseInput(claim(_))
 
   val allUsedSquars = parsed.flatMap(claimToCoords)
 
@@ -22,14 +15,14 @@ object Day3 extends App {
 
   println(s"$multiClaimed sqin are claimed multiple times")
 
-
-  val singleUse = for{
+  val singleUse = for {
     c <- parsed
     coords = claimToCoords(c)
     if coords.map(usage).filter(_ != 1).isEmpty
   } yield c._1
 
-  println(s"The claim with id #${singleUse.head} does not intersect with any other")
+  println(
+    s"The claim with id #${singleUse.head} does not intersect with any other")
 
   def claimToCoords(c: Claim): Seq[(Int, Int)] = {
     for {
@@ -38,13 +31,7 @@ object Day3 extends App {
     } yield (x + c._2._1, y + c._2._2)
   }
 
-}
-
-object Parser {
   type Claim = (Int, (Int, Int), (Int, Int))
-
-  def parseClaim(s: String): Option[Claim] =
-    parse(s, claim(_)).fold((_, _, _) => None, (v, _) => Some(v))
 
   def number[_: P] = P(CharIn("0-9").rep(1).!.map(_.toInt))
 
