@@ -33,8 +33,6 @@ object Day3 extends DayApp(3) {
 
   type Claim = (Int, (Int, Int), (Int, Int))
 
-  def number[_: P] = P(CharIn("0-9").rep(1).!.map(_.toInt))
-
   def dimension[_: P] = P(number ~ "x" ~ number)
 
   def coord[_: P] = P(number ~ "," ~ number)

@@ -1,10 +1,12 @@
 package de.dheinrich
-import fastparse.P
+
+import fastparse.NoWhitespace._
+import fastparse._
 
 import scala.io.Source
 import fastparse._
 
-class DayApp(day: Int, useExample: Boolean = false) extends App {
+class DayApp(day: Int, val useExample: Boolean = false) extends App {
 
   val file = if(useExample) "example" else "input"
 
@@ -14,4 +16,6 @@ class DayApp(day: Int, useExample: Boolean = false) extends App {
     .toIndexedSeq
 
   def parseInput[T](parser: P[_] => P[T]) = input.map(s => parse(s, parser).get.value)
+
+  def number[_: P] = P(CharIn("0-9").rep(1).!.map(_.toInt))
 }

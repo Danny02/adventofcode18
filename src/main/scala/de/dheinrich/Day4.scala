@@ -56,8 +56,6 @@ object Day4 extends DayApp(4) {
       Some(perMin.maxBy(_._2))
   }
 
-  def number[_: P] = P(CharIn("0-9").rep(1).!.map(_.toInt))
-
   def date[_: P] =
     P("[" ~ number ~ "-" ~ number ~ "-" ~ number ~ " " ~ number ~ ":" ~ number ~ "]")
       .map {
