@@ -21,5 +21,5 @@ class DayApp(day: Int, val useExample: Boolean = false) extends App {
     case (t, i) => t
   }))
 
-  def number[_: P] = P(CharIn("0-9").rep(1).!.map(_.toInt))
+  def number[_: P] = P(("-".? ~ CharIn("0-9").rep(1)).!.map(_.toInt))
 }
