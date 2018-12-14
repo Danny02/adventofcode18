@@ -51,31 +51,16 @@ case class Path(isHorizontal: Boolean) extends Track
 object Intersection                    extends Track
 
 sealed trait Turn
-object LeftT     extends Turn
+object LeftT    extends Turn
 object Straight extends Turn
-object RightT    extends Turn
+object RightT   extends Turn
 
 object Day13 extends DayApp(13) {
-  val parsed = for {
-    (line, lineIndex)     <- input.zipWithIndex
-    (symbol, symbolIndex) <- line.zipWithIndex
-  } yield {
-    val coords = Vec2(symbolIndex, lineIndex)
-    symbol match {
-      case '-'  => (Some(Path(true)), None, coords)
-      case '|'  => (Some(Path(false)), None, coords)
-      case '\\' => (Some(NorthEastCurve), None, coords)
-      case '/'  => (Some(NorthWestCurve), None, coords)
-      case '+'  => (Some(Intersection), None, coords)
 
-      case '<' => (Some(Path(true)), Some(Cart(West)), coords)
-      case '>' => (Some(Path(true)), Some(Cart(East)), coords)
-      case '^' => (Some(Path(false)), Some(Cart(North)), coords)
-      case 'v' => (Some(Path(false)), Some(Cart(South)), coords)
+  implicit val posOrdering: Ordering[Vec2] =
+    Ordering.Tuple2[Int, Int].on(v => (v.x, v.y))
 
-      case _ => (None, None, coords)
-    }
-  }
+  val parsed = parse(input)
 
   val tracks: Map[Vec2, Track] = (for {
     (tOp, _, c) <- parsed
@@ -83,42 +68,28 @@ object Day13 extends DayApp(13) {
   } yield c -> track).toMap
 
   type Carts = Seq[(Vec2, Cart)]
-
-  val carts: Seq[(Vec2, Cart)] = for {
+  val carts: Carts = for {
     (_, cOp, c) <- parsed
     cart        <- cOp
   } yield c -> cart
 
-  def moveCarts(carts: Carts): Vec2 = {
+  println(moveUntilFirstCrash(carts))
+  println(moveUntilOnlyOneCart(carts))
+
+  // Part I
+  @tailrec
+  def moveUntilFirstCrash(cts: Carts): Vec2 = {
 
     @tailrec
     def recMove(toMove: Carts, moved: Carts = Seq()): Either[Vec2, Carts] = {
-      val current = toMove.head
-      val pos     = current._1
-      val track   = tracks(pos)
-      val (nextPos, cart) = (track, current._2) match {
-        case (Path(_), c @ Cart(dir, _)) => (dir.move(pos), c)
+      val current         = toMove.head
+      val (nextPos, cart) = (moveCart _).tupled(current)
 
-        case (NorthEastCurve, Cart(North, tc)) => (West.move(pos), Cart(West, tc))
-        case (NorthEastCurve, Cart(East, tc)) => (South.move(pos), Cart(South, tc))
-        case (NorthEastCurve, Cart(West, tc)) => (North.move(pos), Cart(North, tc))
-        case (NorthEastCurve, Cart(South, tc)) => (East.move(pos), Cart(East, tc))
-
-        case (NorthWestCurve, Cart(North, tc)) => (East.move(pos), Cart(East, tc))
-        case (NorthWestCurve, Cart(East, tc)) => (North.move(pos), Cart(North, tc))
-        case (NorthWestCurve, Cart(West, tc)) => (South.move(pos), Cart(South, tc))
-        case (NorthWestCurve, Cart(South, tc)) => (West.move(pos), Cart(West, tc))
-
-        case (Intersection, c @ Cart(dir, tc)) => {
-          val newDir = dir.turn(c.turn)
-          (newDir.move(pos), Cart(newDir, tc + 1))
-        }
-      }
-
-      if(moved.map(_._1).contains(nextPos) || toMove.map(_._1).contains(nextPos)) {
+      if(moved
+           .map(_._1)
+           .contains(nextPos) || toMove.map(_._1).contains(nextPos)) {
         Left(nextPos)
-      }
-      else {
+      } else {
         val nextMoved = (nextPos, cart) +: moved
         if(toMove.tail.isEmpty)
           Right(nextMoved)
@@ -127,21 +98,94 @@ object Day13 extends DayApp(13) {
       }
     }
 
-    @tailrec
-    def recAllMoves(cts: Carts): Vec2 = {
-      implicit val posOrdering: Ordering[Vec2] =
-        Ordering.Tuple2[Int, Int].on(v => (v.x, v.y))
-
-      val sorted = cts.sortBy(_._1)
-      recMove(sorted) match {
-        case Left(v) => v
-        case Right(moved) => recAllMoves(moved)
-      }
+    val sorted = cts.sortBy(_._1)
+    recMove(sorted) match {
+      case Left(v)      => v
+      case Right(moved) => moveUntilFirstCrash(moved)
     }
-
-    recAllMoves(carts)
   }
 
-  println(moveCarts(carts))
+  // Part II
+  @tailrec
+  def moveUntilOnlyOneCart(cts: Carts): Vec2 = {
 
+    @tailrec
+    def recMove(toMove: Carts, moved: Carts = Seq()): Carts = {
+      val current         = toMove.head
+      val (nextPos, cart) = (moveCart _).tupled(current)
+
+      val collides = moved.map(_._1).contains(nextPos) || toMove
+        .map(_._1)
+        .contains(nextPos)
+
+      val nextMoved = ((nextPos, cart) +: moved).filterNot {
+        case (p, _) => collides && p == nextPos
+      }
+
+      val tail = toMove.tail.filterNot {
+        case (p, _) => collides && p == nextPos
+      }
+
+      if(toMove.tail.isEmpty)
+        nextMoved
+      else
+        recMove(tail, nextMoved)
+    }
+
+    val sorted = cts.sortBy(_._1)
+    val moved  = recMove(sorted)
+    if(moved.size == 1)
+      moved(0)._1
+    else
+      moveUntilOnlyOneCart(moved)
+  }
+
+  def moveCart(pos: Vec2, cart: Cart) = {
+    val track = tracks(pos)
+    (track, cart) match {
+      case (Path(_), c @ Cart(dir, _)) => (dir.move(pos), c)
+
+      case (NorthEastCurve, Cart(North, tc)) => (West.move(pos), Cart(West, tc))
+      case (NorthEastCurve, Cart(East, tc)) =>
+        (South.move(pos), Cart(South, tc))
+      case (NorthEastCurve, Cart(West, tc)) =>
+        (North.move(pos), Cart(North, tc))
+      case (NorthEastCurve, Cart(South, tc)) => (East.move(pos), Cart(East, tc))
+
+      case (NorthWestCurve, Cart(North, tc)) => (East.move(pos), Cart(East, tc))
+      case (NorthWestCurve, Cart(East, tc)) =>
+        (North.move(pos), Cart(North, tc))
+      case (NorthWestCurve, Cart(West, tc)) =>
+        (South.move(pos), Cart(South, tc))
+      case (NorthWestCurve, Cart(South, tc)) => (West.move(pos), Cart(West, tc))
+
+      case (Intersection, c @ Cart(dir, tc)) => {
+        val newDir = dir.turn(c.turn)
+        (newDir.move(pos), Cart(newDir, tc + 1))
+      }
+    }
+  }
+
+  def parse(inputs: Seq[String]) = {
+    for {
+      (line, lineIndex)     <- inputs.zipWithIndex
+      (symbol, symbolIndex) <- line.zipWithIndex
+    } yield {
+      val coords = Vec2(symbolIndex, lineIndex)
+      symbol match {
+        case '-'  => (Some(Path(true)), None, coords)
+        case '|'  => (Some(Path(false)), None, coords)
+        case '\\' => (Some(NorthEastCurve), None, coords)
+        case '/'  => (Some(NorthWestCurve), None, coords)
+        case '+'  => (Some(Intersection), None, coords)
+
+        case '<' => (Some(Path(true)), Some(Cart(West)), coords)
+        case '>' => (Some(Path(true)), Some(Cart(East)), coords)
+        case '^' => (Some(Path(false)), Some(Cart(North)), coords)
+        case 'v' => (Some(Path(false)), Some(Cart(South)), coords)
+
+        case _ => (None, None, coords)
+      }
+    }
+  }
 }
