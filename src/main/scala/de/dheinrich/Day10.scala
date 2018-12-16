@@ -45,6 +45,6 @@ object Day10 extends DayApp(10) {
     }
   }
 
-  def vec2[_: P] = P("<" ~ number ~ "," ~ number ~ ">").map(Vec2.tupled)
+  def vec2[_: P] = P("<" ~ number ~ "," ~ number ~ ">").map(t => Vec2(t._1, t._2))
   def star[_: P] = P("position=" ~ vec2 ~ "velocity=" ~ vec2).map(Star.tupled)
 }

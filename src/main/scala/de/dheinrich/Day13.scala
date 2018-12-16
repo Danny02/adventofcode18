@@ -57,9 +57,6 @@ object RightT   extends Turn
 
 object Day13 extends DayApp(13) {
 
-  implicit val posOrdering: Ordering[Vec2] =
-    Ordering.Tuple2[Int, Int].on(v => (v.x, v.y))
-
   val parsed = parse(input)
 
   val tracks: Map[Vec2, Track] = (for {
