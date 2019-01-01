@@ -5,9 +5,9 @@ import fastparse._
 
 import scala.io.Source
 
-class DayApp(day: Int, val useExample: Boolean = false) extends App {
+class DayApp(day: Int, val useExample: Boolean = false, inputFile: String = "input") extends App {
 
-  val file = if(useExample) "example" else "input"
+  val file = if(useExample) "example" else inputFile
 
   val input = Source
     .fromResource(s"day$day/$file.txt")
